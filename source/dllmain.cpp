@@ -11,6 +11,7 @@ import msaa;
 import crtgamma;
 import postfx;
 import texturepack;
+import cutscenes;
 import dx9;
 import internalres;
 import fov;

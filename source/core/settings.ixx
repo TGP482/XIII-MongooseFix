@@ -22,6 +22,7 @@ export enum Pref
     PREF_CRTGAMMA,
     PREF_SHADER,
     PREF_TEXTUREPACK,
+    PREF_CUTSCENES,
     PREF_INTERNALRESX,
     PREF_INTERNALRESY,
     PREF_SCALINGFILTER,
@@ -97,6 +98,10 @@ public:
         // (0) the game's textures, (1) the packages in TexturesAI when that folder exists. On by
         // default: a pack that was installed is meant to be used, and without one this does nothing.
         mPrefs[PREF_TEXTUREPACK] = std::clamp(iniReader.ReadInteger("Graphics", "TexturePack", 1), 0, 1);
+
+        // (0) the game's own movies, (1) the ones in a VideoAI folder when it has them. Same default
+        // reasoning as the texture pack.
+        mPrefs[PREF_CUTSCENES] = std::clamp(iniReader.ReadInteger("Graphics", "Cutscenes", 1), 0, 1);
 
         auto nInternalX = iniReader.ReadInteger("Display", "InternalResolutionX", 0);
         auto nInternalY = iniReader.ReadInteger("Display", "InternalResolutionY", 0);

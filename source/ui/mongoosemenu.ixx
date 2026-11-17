@@ -375,6 +375,7 @@ static constexpr Choice aMSAA[]{ { 0, "Off" }, { 2, "2x" }, { 4, "4x" }, { 8, "8
 static constexpr Choice aShader[]{ { 0, "Off" }, { 1, "Sharpen" }, { 2, "Vivid" }, { 3, "Comic Ink" }, { 4, "Bloom" },
     { 5, "Cinematic" }, { 6, "Noir" }, { 7, "Remaster" } };
 static constexpr Choice aTexturePack[]{ { 0, "Classic" }, { 1, "AI Upscaled" } };
+static constexpr Choice aCutscenes[]{ { 0, "Classic" }, { 1, "AI Upscaled" } };
 static constexpr Choice aLayout[]{ { 0, "Classic Halo" }, { 1, "Goofy Halo" }, { 2, "Classic XIII" }, { 3, "Goofy XIII" } };
 
 #define CHOICE(a) a, static_cast<int>(std::size(a))
@@ -394,6 +395,7 @@ static Setting aSettings[]
     { "Graphics", "CRTGamma", "CRT Gamma", Kind::Toggle, nullptr, 0, 0, 1, 1, 0, 0, 0 },
     { "Graphics", "Shader", "Shader", Kind::Choice, CHOICE(aShader), 0, 0, 0, 0, 0, 0 },
     { "Graphics", "TexturePack", "Texture Pack", Kind::Choice, CHOICE(aTexturePack), 0, 0, 0, 0, 1, 1 },
+    { "Graphics", "Cutscenes", "Cutscenes", Kind::Choice, CHOICE(aCutscenes), 0, 0, 0, 0, 1, 1 },
     { "Gameplay", "MouseLookSensitivity", "Mouse Look Sensitivity", Kind::Number, nullptr, 0, 0.1f, 20.0f, 0.1f, 2, 3.0f, 3.0f },
     { "Gameplay", "MouseSmoothing", "Mouse Smoothing", Kind::Toggle, nullptr, 0, 0, 1, 1, 0, 0, 0 },
     { "FieldOfView", "FieldOfView", "Field of View", Kind::Number, nullptr, 0, 45.0f, 145.0f, 1.0f, 2, 91.31f, 91.31f },
