@@ -221,6 +221,11 @@ public:
 	IDirect3DTexture9 *GetProxyInterface() const { return ProxyInterface; }
 	// What SetTexture binds: an HD replacement of the content when there is one (hd_textures.hpp).
 	IDirect3DTexture9 *GetBindInterface() const { return Replacement ? Replacement : ProxyInterface; }
+	// d3d8to9 never deletes a wrapper: a texture created later at a freed texture's address gets the old
+	// wrapper back from the lookup table, so CreateTexture clears what belonged to the previous one.
+	void ResetReplacement() { Replacement = nullptr; pLockedBits = nullptr; nLockedPitch = 0; }
+	// UpdateTexture copies the content, so the match travels with it.
+	void CopyReplacementFrom(const Direct3DTexture8 *pSource) { Replacement = pSource->Replacement; }
 
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObj) override;
 	virtual ULONG STDMETHODCALLTYPE AddRef() override;

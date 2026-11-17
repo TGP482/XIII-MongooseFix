@@ -128,6 +128,10 @@ HRESULT STDMETHODCALLTYPE Direct3DTexture8::GetSurfaceLevel(UINT Level, IDirect3
 
 	*ppSurfaceLevel = Device->ProxyAddressLookupTable->FindAddress<Direct3DSurface8>(SurfaceInterface);
 
+	// Written through the surface (render target, CopyRects): the content is no longer what was matched.
+	if (Level == 0)
+		Replacement = nullptr;
+
 	return D3D_OK;
 }
 HRESULT STDMETHODCALLTYPE Direct3DTexture8::LockRect(UINT Level, D3DLOCKED_RECT *pLockedRect, const RECT *pRect, DWORD Flags)
@@ -136,6 +140,10 @@ HRESULT STDMETHODCALLTYPE Direct3DTexture8::LockRect(UINT Level, D3DLOCKED_RECT 
 
 	if (Level == 0)
 	{
+		// Any write to level 0 makes the replacement stale; a whole-level write is looked up again on unlock.
+		if (SUCCEEDED(hr) && (Flags & D3DLOCK_READONLY) == 0)
+			Replacement = nullptr;
+
 		const bool bWhole = SUCCEEDED(hr) && pLockedRect && pRect == nullptr && (Flags & D3DLOCK_READONLY) == 0;
 		pLockedBits = bWhole ? pLockedRect->pBits : nullptr;
 		nLockedPitch = bWhole ? pLockedRect->Pitch : 0;

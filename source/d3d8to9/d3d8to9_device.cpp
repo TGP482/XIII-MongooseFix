@@ -296,6 +296,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::CreateTexture(UINT Width, UINT Height
 		return hr;
 
 	*ppTexture = ProxyAddressLookupTable->FindAddress<Direct3DTexture8>(TextureInterface);
+	static_cast<Direct3DTexture8 *>(*ppTexture)->ResetReplacement();
 
 	return D3D_OK;
 }
@@ -548,6 +549,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::UpdateTexture(IDirect3DBaseTexture8 *
 	case D3DRTYPE_TEXTURE:
 		SourceBaseTextureInterface = static_cast<Direct3DTexture8 *>(pSourceTexture)->GetProxyInterface();
 		DestinationBaseTextureInterface = static_cast<Direct3DTexture8 *>(pDestinationTexture)->GetProxyInterface();
+		static_cast<Direct3DTexture8 *>(pDestinationTexture)->CopyReplacementFrom(static_cast<Direct3DTexture8 *>(pSourceTexture));
 		break;
 	case D3DRTYPE_VOLUMETEXTURE:
 		SourceBaseTextureInterface = static_cast<Direct3DVolumeTexture8 *>(pSourceTexture)->GetProxyInterface();
