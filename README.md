@@ -31,6 +31,10 @@ WINEDLLOVERRIDES="dinput8=n,b" %command%
 - **Anisotropic Filtering** - Forces the selected anisotropic filtering level on all textures instead of using the game's defaults.
 - **MSAA** - Enables multisample antialiasing at 2, 4 or 8 samples.
 - **CRT Gamma** - Restores the vibrance and contrast a CRT gave the game's colours. (0) off, (1) on. DirectX 9 only.
+- **Shader** - Optional post-process look over the finished frame: Sharpen, Vivid, Comic Ink, Bloom, Cinematic, Noir or Remaster. Switches live. DirectX 9 only.
+- **Texture Pack** - Uses the packages in a `TexturesAI` folder next to `TexturesPC` (e.g. an upscaled texture pack) instead of the game's own, when that folder exists. The originals stay untouched. Applies at the next launch.
+- **HD Textures** - With Texture Pack on, textures found in `TexturesAI\HD` (named by a hash of the original texture's content) are swapped in at draw time. The game keeps the original size and texture coordinates, so HUD icons, fonts, sprites and decals get sharper without changing their size or position. DirectX 9 only.
+- **Cutscenes** - Plays the movies in a `VideoAI` folder next to `Video` (e.g. upscaled cutscenes) when they exist, per file, falling back to the originals. Movies of any resolution play; the stock player was limited to 1024x512. Switches live.
 
 ### Gameplay
 - **Mouse Look Sensitivity** - Adjusts mouse look sensitivity.
@@ -38,6 +42,7 @@ WINEDLLOVERRIDES="dinput8=n,b" %command%
 
 ### Field of View
 - **Field of View** - Adjusts the base gameplay field of view.
+- **HUD Scaling** - (1) scales the HUD and comic panels to the screen like the original 640x480 game, (0) keeps the stock pixel size.
 
 ### Controller
 - **Restored Controller Support** - Full controller support has been restored.
@@ -69,8 +74,12 @@ WINEDLLOVERRIDES="dinput8=n,b" %command%
 - Fixed the cutscene camera never turning onto its focus target above 162 fps, leaving the shot pointed at whatever angle it started on.
 - Fixed getting stuck when squeezing through narrow gaps at high frame rates.
 - Fixed an issue with FMVs playing silently.
+- Fixed DirectX 9 failing with "Failed to create vertex shader" (error X5430 on `min oFog`) under Proton/DXVK and on some AMD drivers: the d3d8to9 shader translator dropped the `.x` swizzle on fog sources.
+- Fixed low frame rates on DirectX 9 (and DX8 under Wine): the engine locked the back buffer for reading every frame without using the result, which forced a full GPU readback.
+- Fixed the sixth sense "Tap Tap Tap" markers being drawn off screen with HUD scaling on.
 
 ### Credits
+- [PowerAtlas](https://github.com/PowerAtlas) - Proton/DX9 fixes, Shader, Texture Pack, HD Textures, Cutscenes, HUD Scaling toggle; developed with Claude Fable 5.2 and Claude Opus 5.5 (Anthropic).
 - [ThirteenAG](https://github.com/ThirteenAG) - [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader).
 - [crosire](https://github.com/crosire) - [d3d8to9](https://github.com/crosire/d3d8to9).
 - [CeeJayDK](https://github.com/CeeJayDK) - [SweetFX](https://github.com/CeeJayDK/SweetFX), CRT Gamma.

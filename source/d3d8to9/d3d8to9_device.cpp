@@ -296,6 +296,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::CreateTexture(UINT Width, UINT Height
 		return hr;
 
 	*ppTexture = ProxyAddressLookupTable->FindAddress<Direct3DTexture8>(TextureInterface);
+	static_cast<Direct3DTexture8 *>(*ppTexture)->ResetReplacement();
 
 	return D3D_OK;
 }
@@ -548,6 +549,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::UpdateTexture(IDirect3DBaseTexture8 *
 	case D3DRTYPE_TEXTURE:
 		SourceBaseTextureInterface = static_cast<Direct3DTexture8 *>(pSourceTexture)->GetProxyInterface();
 		DestinationBaseTextureInterface = static_cast<Direct3DTexture8 *>(pDestinationTexture)->GetProxyInterface();
+		static_cast<Direct3DTexture8 *>(pDestinationTexture)->CopyReplacementFrom(static_cast<Direct3DTexture8 *>(pSourceTexture));
 		break;
 	case D3DRTYPE_VOLUMETEXTURE:
 		SourceBaseTextureInterface = static_cast<Direct3DVolumeTexture8 *>(pSourceTexture)->GetProxyInterface();
@@ -946,7 +948,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::SetTexture(DWORD Stage, IDirect3DBase
 	switch (pTexture->GetType())
 	{
 	case D3DRTYPE_TEXTURE:
-		BaseTextureInterface = static_cast<Direct3DTexture8 *>(pTexture)->GetProxyInterface();
+		BaseTextureInterface = static_cast<Direct3DTexture8 *>(pTexture)->GetBindInterface();
 		break;
 	case D3DRTYPE_VOLUMETEXTURE:
 		BaseTextureInterface = static_cast<Direct3DVolumeTexture8 *>(pTexture)->GetProxyInterface();
@@ -1488,10 +1490,14 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::CreateVertexShader(const DWORD *pDecl
 
 		SourceCode = std::regex_replace(SourceCode, std::regex("    \\/\\/ vs\\.1\\.1\\n((?! ).+\\n)+"), "");
 		SourceCode = std::regex_replace(SourceCode, std::regex("([^\\n]\\n)[\\s]*#line [0123456789]+.*\\n"), "$1");
-		SourceCode = std::regex_replace(SourceCode, std::regex("(oFog|oPts)\\.x"), "$1 /* removed swizzle */");
-		SourceCode = std::regex_replace(SourceCode, std::regex("(add|sub|mul|min|max) (oFog|oPts), ([cr][0-9]+), (.+)\\n"), "$1 $2, $3.x /* added swizzle */, $4\n");
-		SourceCode = std::regex_replace(SourceCode, std::regex("(add|sub|mul|min|max) (oFog|oPts), (.+), ([cr][0-9]+)\\n"), "$1 $2, $3, $4.x /* added swizzle */\n");
+		// Scalar outputs (oFog, oPts): sources have to select a single component (error X5430). The
+		// destination may still carry its ".x" write mask here ("min oFog.x, r5, r3" is what XIII's vertex
+		// fog code disassembles to), so the source rules accept it and the mask is only dropped afterwards.
+		// Dropping it first left "min oFog /* removed swizzle */, r5, r3" which no source rule matched.
+		SourceCode = std::regex_replace(SourceCode, std::regex("(add|sub|mul|min|max) (oFog|oPts)(\\.x)?, ([cr][0-9]+), (.+)\\n"), "$1 $2$3, $4.x /* added swizzle */, $5\n");
+		SourceCode = std::regex_replace(SourceCode, std::regex("(add|sub|mul|min|max) (oFog|oPts)(\\.x)?, (.+), ([cr][0-9]+)\\n"), "$1 $2$3, $4, $5.x /* added swizzle */\n");
 		SourceCode = std::regex_replace(SourceCode, std::regex("(mov|mad) (oFog|oPts)(.*), (-?)([crv][0-9]+(?![\\.0-9]))"), "$1 $2$3, $4$5.x /* select single component */");
+		SourceCode = std::regex_replace(SourceCode, std::regex("(oFog|oPts)\\.x"), "$1 /* removed swizzle */");
 
 		// Destination register cannot be the same as first source register for m*x* instructions.
 		if (std::regex_search(SourceCode, std::regex("m.x.")))
