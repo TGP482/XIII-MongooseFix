@@ -5,6 +5,7 @@ module;
 #include <mutex>
 
 #include "texturepack_ini.h"
+#include <d3d8to9/hd_textures.hpp>
 
 export module texturepack;
 
@@ -87,12 +88,38 @@ export void SyncTexturePack()
     }
 }
 
+// The second half of the pack: <game>\TexturesAI\HD\<hash>.dds, drawn in place of the game's texture
+// with that content (d3d8to9/hd_textures.hpp). For what has to keep its size: HUD icons, fonts,
+// sprites, decals. DirectX 9 only (the replacement lives in d3d8to9); read once at startup like the
+// rest of the pack. MONGOOSE_HD_LOG=1 in the environment logs every hashed upload.
+static void LogHD(const char* szMessage)
+{
+    LogInfo("{}", szMessage);
+}
+
+static void InitHDTextures()
+{
+    const auto system = SystemDir();
+    const auto bOn = !system.empty() && MongooseFixSettings.GetInt(PREF_TEXTUREPACK) != 0 && IsTexturePackInstalled();
+    const auto folder = system.parent_path() / L"TexturesAI" / L"HD";
+    std::error_code ec;
+    const auto bFolder = bOn && std::filesystem::is_directory(folder, ec);
+
+    char szLog[8]{};
+    const auto bLog = GetEnvironmentVariableA("MONGOOSE_HD_LOG", szLog, sizeof(szLog)) > 0 && szLog[0] == '1';
+
+    HDTexturesConfigure(bFolder ? folder.wstring() : std::wstring(), bLog, LogHD);
+
+    if (bFolder)
+        LogInfo("HD Textures: {} replacements in TexturesAI\\HD (DirectX 9 only)", HDTexturesIndexed());
+}
+
 class TexturePack
 {
 public:
     TexturePack()
     {
-        MongooseFix::onInitEvent() += []() { ApplyAndWatch([]() { SyncTexturePack(); }); };
+        MongooseFix::onInitEvent() += []() { ApplyAndWatch([]() { SyncTexturePack(); }); InitHDTextures(); };
         MongooseFix::onShutdownEvent() += []() { SyncTexturePack(); };
     }
 } TexturePack;

@@ -4,6 +4,7 @@
  */
 
 #include "d3d8to9.hpp"
+#include "hd_textures.hpp"
 
 Direct3DTexture8::Direct3DTexture8(Direct3DDevice8 *Device, IDirect3DTexture9 *ProxyInterface) :
 	Device(Device), ProxyInterface(ProxyInterface)
@@ -131,10 +132,26 @@ HRESULT STDMETHODCALLTYPE Direct3DTexture8::GetSurfaceLevel(UINT Level, IDirect3
 }
 HRESULT STDMETHODCALLTYPE Direct3DTexture8::LockRect(UINT Level, D3DLOCKED_RECT *pLockedRect, const RECT *pRect, DWORD Flags)
 {
-	return ProxyInterface->LockRect(Level, pLockedRect, pRect, Flags);
+	const HRESULT hr = ProxyInterface->LockRect(Level, pLockedRect, pRect, Flags);
+
+	if (Level == 0)
+	{
+		const bool bWhole = SUCCEEDED(hr) && pLockedRect && pRect == nullptr && (Flags & D3DLOCK_READONLY) == 0;
+		pLockedBits = bWhole ? pLockedRect->pBits : nullptr;
+		nLockedPitch = bWhole ? pLockedRect->Pitch : 0;
+	}
+
+	return hr;
 }
 HRESULT STDMETHODCALLTYPE Direct3DTexture8::UnlockRect(UINT Level)
 {
+	// New content in level 0: look it up while the bits are still mapped.
+	if (Level == 0 && pLockedBits)
+	{
+		Replacement = HDTexturesOnUpload(ProxyInterface, pLockedBits, nLockedPitch);
+		pLockedBits = nullptr;
+	}
+
 	return ProxyInterface->UnlockRect(Level);
 }
 HRESULT STDMETHODCALLTYPE Direct3DTexture8::AddDirtyRect(const RECT *pDirtyRect)

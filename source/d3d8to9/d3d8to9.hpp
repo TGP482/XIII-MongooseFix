@@ -219,6 +219,8 @@ public:
 	~Direct3DTexture8();
 
 	IDirect3DTexture9 *GetProxyInterface() const { return ProxyInterface; }
+	// What SetTexture binds: an HD replacement of the content when there is one (hd_textures.hpp).
+	IDirect3DTexture9 *GetBindInterface() const { return Replacement ? Replacement : ProxyInterface; }
 
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObj) override;
 	virtual ULONG STDMETHODCALLTYPE AddRef() override;
@@ -246,6 +248,9 @@ public:
 private:
 	Direct3DDevice8 *const Device;
 	IDirect3DTexture9 *const ProxyInterface;
+	IDirect3DTexture9 *Replacement = nullptr;   // owned by the HD texture cache
+	void *pLockedBits = nullptr;                 // level 0, whole surface, while locked for writing
+	INT nLockedPitch = 0;
 };
 class Direct3DCubeTexture8 : public IDirect3DCubeTexture8, public AddressLookupTableObject
 {

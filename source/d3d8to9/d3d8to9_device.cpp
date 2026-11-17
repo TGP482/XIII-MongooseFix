@@ -946,7 +946,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::SetTexture(DWORD Stage, IDirect3DBase
 	switch (pTexture->GetType())
 	{
 	case D3DRTYPE_TEXTURE:
-		BaseTextureInterface = static_cast<Direct3DTexture8 *>(pTexture)->GetProxyInterface();
+		BaseTextureInterface = static_cast<Direct3DTexture8 *>(pTexture)->GetBindInterface();
 		break;
 	case D3DRTYPE_VOLUMETEXTURE:
 		BaseTextureInterface = static_cast<Direct3DVolumeTexture8 *>(pTexture)->GetProxyInterface();
