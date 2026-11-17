@@ -5,6 +5,7 @@ module;
 export module exitfix;
 
 import common;
+import texturepack;
 
 // Closing the game can wedge the machine hard enough to need the power button: the exclusive
 // fullscreen D3D8 teardown releases the device, restores the display mode and destroys the window
@@ -18,6 +19,10 @@ static SafetyHookInline shVideoTick{};
 
 static void ExitNow()
 {
+    // DLL_PROCESS_DETACH never comes after TerminateProcess, so the texture pack line is brought in
+    // step with the setting here: the engine may have rewritten XIII.ini from its startup copy since.
+    SyncTexturePack();
+
     // Both die with the process; giving them back first covers a slow kill.
     ClipCursor(nullptr);
     while (ShowCursor(TRUE) < 0);

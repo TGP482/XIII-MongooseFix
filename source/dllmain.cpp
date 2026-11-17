@@ -9,6 +9,8 @@ import display;
 import aniso;
 import msaa;
 import crtgamma;
+import postfx;
+import texturepack;
 import dx9;
 import internalres;
 import fov;

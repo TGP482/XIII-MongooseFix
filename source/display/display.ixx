@@ -12,6 +12,7 @@ import settings;
 import logging;
 import internalres;
 import crtgamma;
+import postfx;
 
 // UD3DRenderDevice field offsets, all from D3DDrv.dll:
 //   +0x0D8  UseVSync            config bool the game only honours fullscreen
@@ -271,6 +272,7 @@ static int __fastcall SetRes(uint8_t* pThis, void*, void* pViewport, int nX, int
     // Our render target is D3DPOOL_DEFAULT and SetRes resets the device, so it goes first.
     ReleaseInternalRes();
     ReleaseCRTGamma();
+    ReleasePostFX();
 
     const auto nResult = shSetRes.fastcall<int>(pThis, nullptr, pViewport, nX, nY, nFullscreen);
 
@@ -344,6 +346,7 @@ static void __fastcall Present(uint8_t* pThis, void*, void* pViewport)
 
     PresentInternalRes(pThis);
     PresentCRTGamma(pThis);
+    PresentPostFX(pThis);
 
     // Blocks until the next composition frame, so the window gets one present per refresh.
     if (bWindowedVSync)

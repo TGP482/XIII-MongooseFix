@@ -20,6 +20,8 @@ export enum Pref
     PREF_ANISOTROPICFILTERING,
     PREF_MSAA,
     PREF_CRTGAMMA,
+    PREF_SHADER,
+    PREF_TEXTUREPACK,
     PREF_INTERNALRESX,
     PREF_INTERNALRESY,
     PREF_SCALINGFILTER,
@@ -88,6 +90,13 @@ public:
         mPrefs[PREF_MSAA] = nMSAA >= 8 ? 8 : nMSAA >= 4 ? 4 : nMSAA >= 2 ? 2 : 0;
 
         mPrefs[PREF_CRTGAMMA] = std::clamp(iniReader.ReadInteger("Graphics", "CRTGamma", 0), 0, 1);
+
+        // 0 off, n the nth post-process preset of postfx_shaders.h; postfx clamps to the presets it has.
+        mPrefs[PREF_SHADER] = std::clamp(iniReader.ReadInteger("Graphics", "Shader", 0), 0, 99);
+
+        // (0) the game's textures, (1) the packages in TexturesAI when that folder exists. On by
+        // default: a pack that was installed is meant to be used, and without one this does nothing.
+        mPrefs[PREF_TEXTUREPACK] = std::clamp(iniReader.ReadInteger("Graphics", "TexturePack", 1), 0, 1);
 
         auto nInternalX = iniReader.ReadInteger("Display", "InternalResolutionX", 0);
         auto nInternalY = iniReader.ReadInteger("Display", "InternalResolutionY", 0);

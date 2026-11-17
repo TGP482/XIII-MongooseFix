@@ -1,6 +1,7 @@
 module;
 
 #include <common.hxx>
+#include <algorithm>
 #include <cstdio>
 #include <fstream>
 
@@ -370,6 +371,10 @@ static constexpr Choice aMaxFrameRate[]{ { 0, "Unlocked" }, { 1, "Monitor" }, { 
 static constexpr Choice aDirectX[]{ { 0, "DirectX 8" }, { 1, "DirectX 9" } };
 static constexpr Choice aAniso[]{ { 0, "Off" }, { 2, "2x" }, { 4, "4x" }, { 8, "8x" }, { 16, "16x" } };
 static constexpr Choice aMSAA[]{ { 0, "Off" }, { 2, "2x" }, { 4, "4x" }, { 8, "8x" } };
+// Same order as aPostFXPresets in graphics/postfx_shaders.h: the ini stores the number.
+static constexpr Choice aShader[]{ { 0, "Off" }, { 1, "Sharpen" }, { 2, "Vivid" }, { 3, "Comic Ink" }, { 4, "Bloom" },
+    { 5, "Cinematic" }, { 6, "Noir" }, { 7, "Remaster" } };
+static constexpr Choice aTexturePack[]{ { 0, "Classic" }, { 1, "AI Upscaled" } };
 static constexpr Choice aLayout[]{ { 0, "Classic Halo" }, { 1, "Goofy Halo" }, { 2, "Classic XIII" }, { 3, "Goofy XIII" } };
 
 #define CHOICE(a) a, static_cast<int>(std::size(a))
@@ -387,6 +392,8 @@ static Setting aSettings[]
     { "Graphics", "AnisotropicFiltering", "Anisotropic Filtering", Kind::Choice, CHOICE(aAniso), 0, 0, 0, 0, 16, 16 },
     { "Graphics", "MSAA", "MSAA", Kind::Choice, CHOICE(aMSAA), 0, 0, 0, 0, 0, 0 },
     { "Graphics", "CRTGamma", "CRT Gamma", Kind::Toggle, nullptr, 0, 0, 1, 1, 0, 0, 0 },
+    { "Graphics", "Shader", "Shader", Kind::Choice, CHOICE(aShader), 0, 0, 0, 0, 0, 0 },
+    { "Graphics", "TexturePack", "Texture Pack", Kind::Choice, CHOICE(aTexturePack), 0, 0, 0, 0, 1, 1 },
     { "Gameplay", "MouseLookSensitivity", "Mouse Look Sensitivity", Kind::Number, nullptr, 0, 0.1f, 20.0f, 0.1f, 2, 3.0f, 3.0f },
     { "Gameplay", "MouseSmoothing", "Mouse Smoothing", Kind::Toggle, nullptr, 0, 0, 1, 1, 0, 0, 0 },
     { "FieldOfView", "FieldOfView", "Field of View", Kind::Number, nullptr, 0, 45.0f, 145.0f, 1.0f, 2, 91.31f, 91.31f },
@@ -483,7 +490,8 @@ static void Step(Setting& s, int nDirection)
 
     s.bChanged = true;
 
-    if (std::strcmp(s.szKey, "DirectXVersion") == 0)
+    // The texture pack is a search path the engine reads at startup, so it is next launch's too.
+    if (std::strcmp(s.szKey, "DirectXVersion") == 0 || std::strcmp(s.szKey, "TexturePack") == 0)
         bRestartNotice = true;
 }
 
@@ -583,6 +591,9 @@ static void SaveValues()
 
     std::string sSection;
 
+    // Rows whose key the ini already has. An ini written by an older version lacks the newer keys.
+    std::vector<const Setting*> aFound;
+
     for (auto& line : aLines)
     {
         const auto nFirst = line.find_first_not_of(" \t");
@@ -623,6 +634,9 @@ static void SaveValues()
             bHeight = pSetting != nullptr;
         }
 
+        if (pSetting && !bHeight)
+            aFound.push_back(pSetting);
+
         if (!pSetting || !pSetting->bChanged)
             continue;
 
@@ -640,6 +654,46 @@ static void SaveValues()
 
         line = line.substr(0, nHead) + sNew
             + (nComment == std::string::npos ? std::string() : line.substr(nComment));
+    }
+
+    // A changed row with no line of its own gets one, as the last line of its section (a new section
+    // at the end of the file if that is missing too), so a setting newer than the ini still sticks.
+    for (const auto& s : aSettings)
+    {
+        if (!s.bChanged || s.eKind == Kind::Scale || std::find(aFound.begin(), aFound.end(), &s) != aFound.end())
+            continue;
+
+        const auto sNewLine = std::string(s.szKey) + " = " + ValueText(s);
+        auto nInsert = aLines.size();
+        auto bInSection = false;
+        auto bHaveSection = false;
+
+        for (size_t i = 0; i < aLines.size(); ++i)
+        {
+            const auto nFirst = aLines[i].find_first_not_of(" \t");
+            if (nFirst == std::string::npos)
+                continue;
+
+            if (aLines[i][nFirst] == '[')
+            {
+                const auto nEnd = aLines[i].find(']', nFirst);
+                bInSection = nEnd != std::string::npos && aLines[i].substr(nFirst + 1, nEnd - nFirst - 1) == s.szSection;
+                bHaveSection |= bInSection;
+            }
+
+            // After the last line of the section that is not blank.
+            if (bInSection)
+                nInsert = i + 1;
+        }
+
+        if (!bHaveSection)
+        {
+            aLines.push_back("");
+            aLines.push_back(std::string("[") + s.szSection + "]");
+            nInsert = aLines.size();
+        }
+
+        aLines.insert(aLines.begin() + static_cast<std::ptrdiff_t>(nInsert), sNewLine);
     }
 
     // Truncating in place lets the watcher read the ini half written and default the missing keys.

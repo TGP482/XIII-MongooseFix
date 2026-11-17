@@ -27,6 +27,11 @@ typedef HRESULT(WINAPI *PFN_D3DDisassemble)(LPCVOID pSrcData, SIZE_T SrcDataSize
 static HMEMORYMODULE  g_d3dx9Module = nullptr;
 static HMEMORYMODULE  g_d3dCompilerModule = nullptr;
 
+typedef HRESULT(WINAPI *PFN_D3DCompile)(LPCVOID pSrcData, SIZE_T SrcDataSize, LPCSTR pSourceName,
+	const D3D_SHADER_MACRO *pDefines, ID3DInclude *pInclude, LPCSTR pEntrypoint, LPCSTR pTarget,
+	UINT Flags1, UINT Flags2, ID3DBlob **ppCode, ID3DBlob **ppErrorMsgs);
+
+static PFN_D3DCompile     p_D3DCompile = nullptr;
 static PFN_D3DAssemble    p_D3DAssemble = nullptr;
 static PFN_D3DDisassemble p_D3DDisassemble = nullptr;
 
@@ -94,6 +99,7 @@ bool InitEmbeddedD3DX()
 	{
 		p_D3DAssemble = reinterpret_cast<PFN_D3DAssemble>(MemoryGetProcAddress(g_d3dCompilerModule, "D3DAssemble"));
 		p_D3DDisassemble = reinterpret_cast<PFN_D3DDisassemble>(MemoryGetProcAddress(g_d3dCompilerModule, "D3DDisassemble"));
+		p_D3DCompile = reinterpret_cast<PFN_D3DCompile>(MemoryGetProcAddress(g_d3dCompilerModule, "D3DCompile"));
 	}
 
 	if (p_D3DAssemble != nullptr)
@@ -113,4 +119,17 @@ bool InitEmbeddedD3DX()
 	      D3DXDisassembleShader != nullptr &&
 	      D3DXLoadSurfaceFromSurface != nullptr);
 	return Ok;
+}
+
+HRESULT EmbeddedD3DCompile(const char *pSource, size_t nLength, const char *szName, const char *szEntryPoint,
+	const char *szProfile, ID3DXBuffer **ppCode, ID3DXBuffer **ppErrors)
+{
+	InitEmbeddedD3DX();
+
+	if (p_D3DCompile == nullptr || pSource == nullptr || ppCode == nullptr)
+		return E_FAIL;
+
+	return p_D3DCompile(pSource, nLength, szName, nullptr, nullptr, szEntryPoint, szProfile, 0, 0,
+		reinterpret_cast<ID3DBlob **>(ppCode),
+		reinterpret_cast<ID3DBlob **>(ppErrors));
 }
