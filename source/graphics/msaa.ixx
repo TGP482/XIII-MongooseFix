@@ -279,16 +279,19 @@ static bool CaptureFrontBuffer(uint8_t* pRenderDev, uint8_t* pViewport, uint32_t
 // virtual void UD3DRenderDevice::ReadPixels(UViewport*, FColor*), __thiscall.
 static void __fastcall ReadPixels(uint8_t* pThis, void*, uint8_t* pViewport, uint32_t* pPixels)
 {
+    // Present calls this with both arguments null every frame. Stock locks the back buffer and
+    // copies nothing. With MSAA on that lock would fail; without MSAA it succeeds, but on a
+    // translation layer (DXVK, wined3d under Wine/Proton) locking the back buffer downloads the whole
+    // frame from the GPU, every frame, for nothing: ~25 fps at an 8K internal resolution on Direct3D 9
+    // where 180+ are possible. So it is skipped in every mode.
+    if (!pViewport || !pPixels)
+        return;
+
     if (nLastApplied <= 0)
     {
         shReadPixels.fastcall<void>(pThis, nullptr, pViewport, pPixels);
         return;
     }
-
-    // Present calls this with both arguments null every frame. Stock locks the back buffer and
-    // copies nothing, so skipping it only skips a lock that would fail.
-    if (!pViewport || !pPixels)
-        return;
 
     // Never fall through to the original while MSAA is on, that lock is the crash.
     if (!CaptureFrontBuffer(pThis, pViewport, pPixels) && !bFailed.exchange(true))
