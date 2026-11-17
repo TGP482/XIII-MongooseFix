@@ -149,6 +149,12 @@ static void* Field(void* pObject, const char* szName)
         : nullptr;
 }
 
+// For the other modules that read script state by name (hudscale: the sixth sense positions).
+export void* MongooseFindField(void* pObject, const char* szName)
+{
+    return Field(pObject, szName);
+}
+
 static void SetBool(void* pObject, const char* szName, bool bOn)
 {
     auto pProperty = FindProperty(pObject, szName);
@@ -399,6 +405,7 @@ static Setting aSettings[]
     { "Gameplay", "MouseLookSensitivity", "Mouse Look Sensitivity", Kind::Number, nullptr, 0, 0.1f, 20.0f, 0.1f, 2, 3.0f, 3.0f },
     { "Gameplay", "MouseSmoothing", "Mouse Smoothing", Kind::Toggle, nullptr, 0, 0, 1, 1, 0, 0, 0 },
     { "FieldOfView", "FieldOfView", "Field of View", Kind::Number, nullptr, 0, 45.0f, 145.0f, 1.0f, 2, 91.31f, 91.31f },
+    { "FieldOfView", "HudScaling", "HUD Scaling", Kind::Toggle, nullptr, 0, 0, 1, 1, 0, 1, 1 },
     { "Controller", "ControllerLookSensitivity", "Controller Look Sensitivity", Kind::Number, nullptr, 0, 0.1f, 20.0f, 0.1f, 2, 2.5f, 2.5f },
     { "Controller", "Vibration", "Vibration", Kind::Toggle, nullptr, 0, 0, 1, 1, 0, 1, 1 },
     { "Controller", "Layout", "Controller Layout", Kind::Choice, CHOICE(aLayout), 0, 0, 0, 0, 0, 0 },

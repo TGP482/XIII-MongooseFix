@@ -1,10 +1,12 @@
 module;
 
 #include <common.hxx>
+#include <cstring>
 
 export module hudscale;
 
 import common;
+import settings;
 import logging;
 import menuscale;
 import mongoosemenu;
@@ -848,8 +850,38 @@ static void __fastcall GuiPostRender(uint8_t* pMaster, void*, uint8_t* pCanvas)
     RestoreBox(pCanvas, saved);
 }
 
+// The sixth sense ("Tap Tap Tap" where a guard is heard) is the one HUD element placed by a screen
+// position taken outside the HUD pass: SixSenseSkill.ImOn.Heard projects the sound through
+// WorldToScreen while the game ticks and XIIIBaseHud.AddSixSenseFX keeps it in vSixSensePos[5]
+// until it is drawn. Those are real pixels, so in the scaled pass they land fScale times too far
+// right and down, off screen at any scale above about 1.5. For the length of the pass they are
+// handed over in pass units, then put back exactly as they were.
+static constexpr auto nSixSenseSlots = 5;
+static constexpr auto nVectorFloats = 3;
+
+static float* SixSensePositions(uint8_t* pHud)
+{
+    static void* pClass = nullptr;
+    static ptrdiff_t nOffset = -1;
+
+    // FindProperty walks the class chain by name; the HUD class does not change within a game.
+    const auto pHudClass = pHud ? *reinterpret_cast<void**>(pHud + 0x24) : nullptr;
+    if (pHudClass != pClass)
+    {
+        pClass = pHudClass;
+        auto pField = MongooseFindField(pHud, "vSixSensePos");
+        nOffset = pField ? static_cast<uint8_t*>(pField) - pHud : -1;
+
+        if (pClass)
+            LogInfo("HudScale: sixth sense positions {}", nOffset >= 0 ? std::format("at HUD +0x{:X}", nOffset) : std::string("not found, tap tap stays unscaled"));
+    }
+
+    return nOffset >= 0 ? reinterpret_cast<float*>(pHud + nOffset) : nullptr;
+}
+
 static void __fastcall HudPostRender(uint8_t* pHud, void*, uint8_t* pCanvas)
 {
+
     // The HUD lays out against the whole screen, so inside the interface pass the real values go
     // back for its length.
     const auto bRestoreBox = pCanvas && bGuiClamped.load();
@@ -876,8 +908,9 @@ static void __fastcall HudPostRender(uint8_t* pHud, void*, uint8_t* pCanvas)
 
     const auto fClipY = pCanvas ? *reinterpret_cast<float*>(pCanvas + nOffsetClipY) : 0.0f;
 
-    // Nothing to gain below the height the art was drawn at.
-    if (fClipY <= fAuthoredHeight)
+    // Nothing to gain below the height the art was drawn at, or HUD Scaling is off: stock, every tile
+    // at its pixel size.
+    if (fClipY <= fAuthoredHeight || MongooseFixSettings.GetInt(PREF_HUDSCALING) == 0)
     {
         shHudPostRender.thiscall<void>(pHud, pCanvas);
         ReClamp();
@@ -909,7 +942,24 @@ static void __fastcall HudPostRender(uint8_t* pHud, void*, uint8_t* pCanvas)
     fHudScale = fScale;
     bHudPass = true;
 
+    auto pSixSense = SixSensePositions(pHud);
+    float afSixSense[nSixSenseSlots * nVectorFloats]{};
+
+    if (pSixSense)
+    {
+        std::memcpy(afSixSense, pSixSense, sizeof(afSixSense));
+
+        for (auto i = 0; i < nSixSenseSlots; ++i)
+        {
+            pSixSense[i * nVectorFloats + 0] /= fScale;
+            pSixSense[i * nVectorFloats + 1] /= fScale;
+        }
+    }
+
     shHudPostRender.thiscall<void>(pHud, pCanvas);
+
+    if (pSixSense)
+        std::memcpy(pSixSense, afSixSense, sizeof(afSixSense));
 
     bHudPass = false;
 
